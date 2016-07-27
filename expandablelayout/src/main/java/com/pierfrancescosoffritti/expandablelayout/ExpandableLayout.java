@@ -2,13 +2,17 @@ package com.pierfrancescosoffritti.expandablelayout;
 
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.support.annotation.FloatRange;
 import android.support.annotation.IntDef;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Interpolator;
+import android.view.animation.OvershootInterpolator;
 import android.widget.LinearLayout;
 
 import java.lang.annotation.Retention;
@@ -20,13 +24,16 @@ public class ExpandableLayout extends LinearLayout {
 
     private static final int EXPANSION_DEFAULT_DURATION = 300;
 
+    // direction in which the layout is moving
     private static final byte _EXPANDING = 0;
     private static final byte _COLLAPSING = 1;
-
     @IntDef({_EXPANDING, _COLLAPSING})
     @Retention(RetentionPolicy.SOURCE)
     private @interface ExpansionDirection {}
 
+    @ExpansionDirection private byte expansionDirection;
+
+    // layout state
     public static final int COLLAPSED = 0;
     public static final int ANIMATING = 1;
     public static final int EXPANDED = 2;
@@ -34,26 +41,24 @@ public class ExpandableLayout extends LinearLayout {
     @Retention(RetentionPolicy.SOURCE)
     private @interface State {}
 
-    private @State int state = COLLAPSED;
+    @State private int state = COLLAPSED;
 
     // view that will expand
-    private View expandableView;
+    @Nullable private View expandableView;
 
     // current slide value, between 1.0 and 0.0 (1.0 = EXPANDED, 0.0 = COLLAPSED)
-    private float currentExpansion;
+    @FloatRange(from = 0f, to = 1f) private float currentExpansion;
 
     // max value by which expandableView view can expand.
     private int maxExpansion = -1;
 
-    @ExpansionDirection private byte expansionDirection;
-
     // duration of the expansion in milliseconds
     private long expansionDuration = EXPANSION_DEFAULT_DURATION;
 
-    private ValueAnimator valueAnimator = new ValueAnimator();
-    private Interpolator interpolator = new AccelerateDecelerateInterpolator();
+    @NonNull private ValueAnimator valueAnimator = new ValueAnimator();
+    @NonNull private Interpolator interpolator = new AccelerateDecelerateInterpolator();
 
-    private final Set<OnExpandListener> listeners;
+    @NonNull private final Set<OnExpandListener> listeners;
 
     public ExpandableLayout(Context context) {
         this(context, null);
@@ -73,11 +78,57 @@ public class ExpandableLayout extends LinearLayout {
         setOrientation(VERTICAL);
     }
 
+    public void setExpansionDuration(long expansionDuration) {
+        this.expansionDuration = expansionDuration;
+    }
+
+    public void setInterpolator(@NonNull Interpolator interpolator) {
+        if(interpolator instanceof OvershootInterpolator)
+            Log.e(getClass().getSimpleName(), "Warning: " +OvershootInterpolator.class.getSimpleName() +" may cause problem to the animation");
+
+        this.interpolator = interpolator;
+    }
+
+    /**
+     * @return the state of the view. {@link ExpandableLayout#COLLAPSED}, {@link ExpandableLayout#EXPANDED} or {@link ExpandableLayout#ANIMATING}
+     */
+    @State
+    public int getState() {
+        return state;
+    }
+
+    /**
+     * @return the provided expandable view
+     */
+    @Nullable
+    public View getExpandableView() {
+        return expandableView;
+    }
+
+    /**
+     * get the current expansion
+     * @return a float from 0 to 1. 0 if collapsed and 1 if expanded
+     */
+    @FloatRange(from = 0f, to = 1f)
+    public float getCurrentExpansion() {
+        return currentExpansion;
+    }
+
+    /**
+     * @return the duration of the expand/collapse animation
+     */
+    public long getExpansionDuration() {
+        return expansionDuration;
+    }
+
     @Override
     protected void onFinishInflate() {
         super.onFinishInflate();
 
         expandableView = findViewById(R.id.expandable_view);
+
+        if(expandableView == null)
+            throw new IllegalStateException("No view with the id 'R.id.expandable_view'");
     }
 
     @Override
@@ -96,16 +147,21 @@ public class ExpandableLayout extends LinearLayout {
             }
     }
 
+    /**
+     * If expandable view is  collapsed: expand. Else: collapse
+     * @param animate should play animation?
+     */
     public void toggle(boolean animate) {
-        System.out.println("state: " +state);
-        System.out.println("expansionDirection: " +expansionDirection);
-
         if(state == EXPANDED || (state == ANIMATING && expansionDirection == _EXPANDING))
             collapse(animate);
         else if(state == COLLAPSED || (state == ANIMATING && expansionDirection == _COLLAPSING))
             expand(animate);
     }
 
+    /**
+     * Expand the expandable view
+     * @param animate should play animation?
+     */
     public void expand(boolean animate) {
         if(state == EXPANDED)
             return;
@@ -117,6 +173,10 @@ public class ExpandableLayout extends LinearLayout {
         animate(maxExpansion, duration);
     }
 
+    /**
+     * Collapse the expandable view
+     * @param animate should play animation?
+     */
     public void collapse(boolean animate) {
         if(state == COLLAPSED)
             return;
@@ -131,11 +191,14 @@ public class ExpandableLayout extends LinearLayout {
     private void animate(final int finalHeight, long duration) {
         if(finalHeight != 0 && finalHeight != maxExpansion)
             throw new IllegalArgumentException("finalHeight != 0 && finalHeight != maxExpansion");
+        if(expandableView == null)
+            throw new IllegalArgumentException("expandableView == null");
 
+        // just in case .. :)
         syncHeight();
 
+        // set animation direction
         expansionDirection = finalHeight == maxExpansion ? _EXPANDING : _COLLAPSING;
-        System.out.println("expansionDirection2: " +expansionDirection);
 
         valueAnimator = ValueAnimator.ofInt(expandableView.getLayoutParams().height, finalHeight);
         valueAnimator.setInterpolator(interpolator);
@@ -147,10 +210,13 @@ public class ExpandableLayout extends LinearLayout {
     private final ValueAnimator.AnimatorUpdateListener animatorUpdateListener = new ValueAnimator.AnimatorUpdateListener() {
         @Override
         public void onAnimationUpdate(ValueAnimator animation) {
+            if(expandableView == null)
+                throw new IllegalArgumentException("expandableView == null");
+
             int animationValue = (Integer) animation.getAnimatedValue();
 
             if(animationValue < 0 || animationValue > maxExpansion)
-                Log.i(getClass().getSimpleName(), "Warning. The animation value are out of range, check the provided interpolator");
+                Log.e(getClass().getSimpleName(), "Warning: The animation values are out of range, check the interpolator");
 
             ViewGroup.LayoutParams layoutParams = expandableView.getLayoutParams();
             layoutParams.height = animationValue;
@@ -161,18 +227,31 @@ public class ExpandableLayout extends LinearLayout {
     };
 
     private void syncHeight() {
-        if(state == COLLAPSED) {
-            ViewGroup.LayoutParams layoutParams = expandableView.getLayoutParams();
+        if(expandableView == null)
+            throw new IllegalArgumentException("expandableView == null");
+        if(maxExpansion < 0)
+            throw new IllegalStateException("maxExpansion < 0");
+
+        ViewGroup.LayoutParams layoutParams = expandableView.getLayoutParams();
+
+        if(state == COLLAPSED)
             layoutParams.height = 0;
-            expandableView.setLayoutParams(layoutParams);
-        } else if(state == EXPANDED) {
-            ViewGroup.LayoutParams layoutParams = expandableView.getLayoutParams();
+        else if(state == EXPANDED)
             layoutParams.height = maxExpansion;
-            expandableView.setLayoutParams(layoutParams);
-        }
+        else
+            return;
+
+        expandableView.setLayoutParams(layoutParams);
     }
 
+    /**
+     * only method responsible for updating the state of the view
+     * @param currentHeight expandable view height
+     */
     private void updateState(int currentHeight) {
+        if(expandableView == null)
+            throw new IllegalArgumentException("expandableView == null");
+
         if(currentHeight == maxExpansion) {
             state = EXPANDED;
             expandableView.setVisibility(VISIBLE);
@@ -183,10 +262,26 @@ public class ExpandableLayout extends LinearLayout {
             state = ANIMATING;
             expandableView.setVisibility(VISIBLE);
         }
+
+        currentExpansion = (float)currentHeight/maxExpansion;
+        notifyListeners(currentExpansion);
+    }
+
+    public void addSlideListener(@NonNull OnExpandListener listener) {
+        listeners.add(listener);
+    }
+
+    public void removeListener(@NonNull OnExpandListener listener) {
+        listeners.remove(listener);
+    }
+
+    private void notifyListeners(float currentSlide) {
+        for(OnExpandListener listener : listeners)
+            listener.onExpand(this, currentSlide);
     }
 
     /**
-     * Implement this interface if you want to observe slide changes
+     * Implement this interface if you want to observe expansion changes
      */
     public interface OnExpandListener {
         void onExpand(ExpandableLayout expandableLayout, float currentExpansion);
