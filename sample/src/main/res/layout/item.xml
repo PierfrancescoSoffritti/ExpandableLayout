@@ -1,0 +1,35 @@
+<com.pierfrancescosoffritti.expandablelayout.ExpandableLayout
+    android:id="@+id/expandable_layout"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/non_expandable_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:background="@android:color/white"
+        android:text="Non expandable" />
+
+    <LinearLayout
+        android:id="@id/expandable_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorPrimary"
+        android:orientation="horizontal" >
+
+        <ProgressBar
+            android:layout_width="48dp"
+            android:layout_height="48dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:text="Expandable" />
+
+    </LinearLayout>
+</com.pierfrancescosoffritti.expandablelayout.ExpandableLayout>
