@@ -45,7 +45,7 @@ public class StringAdapter extends RecyclerView.Adapter<StringAdapter.StringView
             super(itemView);
 
             expandableLayout = (ExpandableLayout) itemView.findViewById(R.id.expandable_layout);
-            nonExpandableView = (TextView) itemView.findViewById(R.id.non_expandable_view);
+            nonExpandableView = (TextView) itemView.findViewById(R.id.text_view);
 
             nonExpandableView.setOnClickListener(new View.OnClickListener() {
                 @Override
