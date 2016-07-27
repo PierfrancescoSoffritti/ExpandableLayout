@@ -267,11 +267,11 @@ public class ExpandableLayout extends LinearLayout {
         notifyListeners(currentExpansion);
     }
 
-    public void addSlideListener(@NonNull OnExpandListener listener) {
+    public void addOnExpandListener(@NonNull OnExpandListener listener) {
         listeners.add(listener);
     }
 
-    public void removeListener(@NonNull OnExpandListener listener) {
+    public void removeOnExpandListener(@NonNull OnExpandListener listener) {
         listeners.remove(listener);
     }
 
