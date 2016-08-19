@@ -132,19 +132,34 @@ public class ExpandableLayout extends LinearLayout {
     }
 
     @Override
-    public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    public void onLayout(boolean changed, int l, int t, int r, int b) {
+        if(expandableView == null)
+            throw new IllegalStateException("expandableView == null");
 
-        if(maxExpansion < 0)
-            for(int i=0; i<getChildCount(); i++) {
-                View child = getChildAt(i);
-                if(child.getId() == R.id.expandable_view) {
-                    maxExpansion = child.getMeasuredHeight();
-                    if(state == COLLAPSED)
-                        animate(0, 0);
+        if(maxExpansion < 0) {
+            recalculateMaxExpansion();
 
-                }
+            if (state == COLLAPSED)
+                animate(0, 0);
+        }
+
+        super.onLayout(changed, l, t, r, b);
+    }
+
+    public void recalculateMaxExpansion() {
+        if(expandableView == null)
+            throw new IllegalStateException("expandableView == null");
+
+        maxExpansion = 0;
+
+        if(expandableView instanceof ViewGroup) {
+            for(int i=0; i<((ViewGroup) expandableView).getChildCount(); i++) {
+                View child = ((ViewGroup) expandableView).getChildAt(i);
+                if(child.getVisibility() != GONE)
+                    maxExpansion += child.getMeasuredHeight();
             }
+        } else
+            maxExpansion = expandableView.getMeasuredHeight();
     }
 
     /**
