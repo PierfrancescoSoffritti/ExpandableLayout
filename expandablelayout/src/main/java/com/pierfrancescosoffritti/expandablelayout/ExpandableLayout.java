@@ -131,13 +131,29 @@ public class ExpandableLayout extends LinearLayout {
             throw new IllegalStateException("No view with the id 'R.id.expandable_view'");
     }
 
+    // i'm assuming that all the children of the expandableView have the same height. Not the best solution.
+    private int childrenHeight = -1;
+
     @Override
     public void onLayout(boolean changed, int l, int t, int r, int b) {
         if(expandableView == null)
             throw new IllegalStateException("expandableView == null");
 
         if(maxExpansion < 0) {
-            recalculateMaxExpansion();
+
+            maxExpansion = 0;
+
+            if(expandableView instanceof ViewGroup) {
+                for(int i=0; i<((ViewGroup) expandableView).getChildCount(); i++) {
+                    View child = ((ViewGroup) expandableView).getChildAt(i);
+                    if(child.getVisibility() != GONE) {
+                        maxExpansion += child.getMeasuredHeight();
+                        if(childrenHeight < 0)
+                            childrenHeight = child.getMeasuredHeight();
+                    }
+                }
+            } else
+                maxExpansion = expandableView.getMeasuredHeight();
 
             if (state == COLLAPSED)
                 animate(0, 0);
@@ -156,9 +172,10 @@ public class ExpandableLayout extends LinearLayout {
             for(int i=0; i<((ViewGroup) expandableView).getChildCount(); i++) {
                 View child = ((ViewGroup) expandableView).getChildAt(i);
                 if(child.getVisibility() != GONE)
-                    maxExpansion += child.getMeasuredHeight();
+                    maxExpansion += childrenHeight;
             }
         } else
+            // this will give problems if the method is called when the view visibility is == GONE
             maxExpansion = expandableView.getMeasuredHeight();
     }
 
